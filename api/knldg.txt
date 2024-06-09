@@ -1,0 +1,167 @@
+==============================================
+A manager is a class that acts as an interface between the Django model and the 
+database. It handles database operations like querying, creating, updating, and 
+deleting instances of the model. The default manager class is models.Manager, but
+you can create custom managers to add additional methods or override existing ones.
+Managers are the interface to the database for Django models.
+
+from django.db import models
+
+class ProductManager(models.Manager):
+    def create_product(self, name, price, description):
+        product = self.create(name=name, price=price, description=description)
+        return product
+
+class Product(models.Model):
+    name = models.CharField(max_length=100)
+    price = models.DecimalField(max_digits=10, decimal_places=2)
+    description = models.TextField()
+
+    objects = ProductManager()
+
+    def __str__(self):
+        return self.name
+
+================================================
+related_name, foreignkey-
+
+In Django, the ForeignKey field creates a many-to-one relationship,
+where each instance of the model with the ForeignKey (in this case, Student) 
+relates to one instance of the referenced model (Subject), but the referenced model 
+can relate to multiple instances of the model with the ForeignKey. This means 
+a single student has one major, but a subject can be the major for many students.
+
+
+The related_name attribute in Django models is used to specify the name of the 
+reverse relation from the target model back to the source model. By default it is
+<modelname>_set.
+We use related name when we want to get the object of model where foreinkey was 
+rdefined, through object of model where foreign key was referring to..
+
+here when we want to get M2 object using M1 object then we use related name
+otherwise directly the name of foreign key can be used.
+
+from django.db import models
+
+class Subject(models.Model):   # M1
+    name = models.CharField(max_length=100)
+
+class Student(models.Model):   # M2
+    name = models.CharField(max_length=100)
+    major = models.ForeignKey(Subject, related_name='r_students', on_delete=models.CASCADE)
+
+----shell--
+student = Student.objects.get(name="John Doe")
+subject = student.major
+
+subject = Subject.objects.get(name="Math")
+students = subject.r_students.all()
+
+
+================================================
+q in search filters-=-
+self.request.query_params is a dictionary-like object that contains the
+ query parameters sent with the request.
+# url becomes--GET /search/?q=example  where example is the value in search field
+#i in __iexact, icontains means to ignore case
+def get_queryset(self):
+    query = self.request.query_params.get('q', '').lower()
+    if '@' in query:
+        return CustomUser.objects.filter(email__iexact=query)
+    return CustomUser.objects.filter(username__icontains(query))
+
+
+================================================
+
+The self.get_object() method uses the lookup_field and lookup_url_kwarg attributes
+ of the view to retrieve the object instance that matches the primary key provided 
+ in the URL. By default, lookup_field is set to 'pk', so it will look for
+  the primary key in the URL to find the object.
+
+====================================================
+#Exact Code of Default vs Abstract user class
+
+need to add AUTH_USER_MODEL = 'api.CustomUser' in settings
+while using custom user models
+
+#DefaULT-
+class User(AbstractBaseUser, PermissionsMixin):
+    ...
+    username = models.CharField(
+        _('username'),
+        max_length=150,
+        unique=True,
+        help_text=_('Required. 150 characters or fewer. Letters, digits and @/./+/-/_ only.'),
+        validators=[username_validator],
+        error_messages={
+            'unique': _("A user with that username already exists."),
+        },
+    )
+    first_name = models.CharField(_('first name'), max_length=150, blank=True)
+    last_name = models.CharField(_('last name'), max_length=150, blank=True)
+    email = models.EmailField(_('email address'), blank=True)
+    is_staff = models.BooleanField(
+        _('staff status'),
+        default=False,
+        help_text=_('Designates whether the user can log into this admin site.'),
+    )
+    is_active = models.BooleanField(
+        _('active'),
+        default=True,
+        help_text=_(
+            'Designates whether this user should be treated as active. '
+            'Unselect this instead of deleting accounts.'
+        ),
+    )
+    date_joined = models.DateTimeField(_('date joined'), default=timezone.now)
+
+    objects = UserManager()
+
+    EMAIL_FIELD = 'email'
+    USERNAME_FIELD = 'username'
+    REQUIRED_FIELDS = ['email']
+###################################################
+#Abstract-
+from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin
+from django.db import models
+from django.utils.translation import gettext_lazy as _
+
+class AbstractUser(AbstractBaseUser, PermissionsMixin):
+    username = models.CharField(
+        _('username'),
+        max_length=150,
+        unique=True,
+        help_text=_('Required. 150 characters or fewer. Letters, digits and @/./+/-/_ only.'),
+        validators=[username_validator],
+        error_messages={
+            'unique': _("A user with that username already exists."),
+        },
+    )
+    first_name = models.CharField(_('first name'), max_length=150, blank=True)
+    last_name = models.CharField(_('last name'), max_length=150, blank=True)
+    email = models.EmailField(_('email address'), blank=True)
+    is_staff = models.BooleanField(
+        _('staff status'),
+        default=False,
+        help_text=_('Designates whether the user can log into this admin site.'),
+    )
+    is_active = models.BooleanField(
+        _('active'),
+        default=True,
+        help_text=_(
+            'Designates whether this user should be treated as active. '
+            'Unselect this instead of deleting accounts.'
+        ),
+    )
+    date_joined = models.DateTimeField(_('date joined'), default=timezone.now)
+
+    EMAIL_FIELD = 'email'
+    USERNAME_FIELD = 'username'
+    REQUIRED_FIELDS = ['email']
+========
+Endpoints
+POST /api/register/ - Register a new user
+POST /api/login/ - Login a user
+GET /api/search/?q=<keyword> - Search for users
+POST /api/friend-requests/ - Send a friend request
+GET /api/friend-requests/ - List pending friend requests
