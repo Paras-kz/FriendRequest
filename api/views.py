@@ -11,6 +11,8 @@ from .models import CustomUser, FriendRequest
 from django.db.models import Q
 from rest_framework.pagination import PageNumberPagination
 from .serializers import LoginSerializer, FriendRequestSerializer, UserSerializer
+from rest_framework.exceptions import Throttled
+from rest_framework.throttling import UserRateThrottle
 
 class RegisterView(generics.CreateAPIView):
     queryset = CustomUser.objects.all()
@@ -78,12 +80,16 @@ class FriendRequestViewSet(viewsets.ModelViewSet):
         from_user = self.request.user
         to_user_id = self.request.data.get('to_user')
         to_user = CustomUser.objects.get(id=to_user_id)
-
+        # Apply UserRateThrottle for 'friend_request' scope
+        throttle = UserRateThrottle()
+        throttle.scope = 'send_req'
+        if not throttle.allow_request(self.request, self):
+            raise Throttled(detail="can't send more than 3 req. in a minute")
         # Throttle friend requests (no more than 3 within a minute)
-        one_minute_ago = timezone.now() - timedelta(minutes=1)
-        recent_requests = FriendRequest.objects.filter(from_user=from_user, timestamp__gte=one_minute_ago)
-        if recent_requests.count() >= 3:
-            raise serializers.ValidationError('Too many friend requests sent in a short time')
+        # one_minute_ago = timezone.now() - timedelta(minutes=1)
+        # recent_requests = FriendRequest.objects.filter(from_user=from_user, timestamp__gte=one_minute_ago)
+        # if recent_requests.count() >= 3:
+        #     raise serializers.ValidationError('Too many friend requests sent in a short time')
 
         serializer.save(from_user=from_user, to_user=to_user)
 

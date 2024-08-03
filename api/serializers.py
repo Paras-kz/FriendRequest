@@ -9,6 +9,11 @@ class UserSerializer(serializers.ModelSerializer):
         extra_kwargs = {
             'password': {'write_only': True} #not to be fetched and serialized while reading
         }
+    
+    def validate_email(self, value):
+        if CustomUser.objects.filter(email__iexact=value).exists():
+            raise serializers.ValidationError("user already exists with this email.")
+        return value
 
     def create(self, validated_data):#it is called when serializer.save() is called
         user = CustomUser.objects.create_user(

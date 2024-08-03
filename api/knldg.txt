@@ -24,7 +24,7 @@ class Product(models.Model):
 
 ================================================
 related_name, foreignkey-
-
+Suppose one student can have one major subj. but one subj could be chosen by many students as major
 In Django, the ForeignKey field creates a many-to-one relationship,
 where each instance of the model with the ForeignKey (in this case, Student) 
 relates to one instance of the referenced model (Subject), but the referenced model 
